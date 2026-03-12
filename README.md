@@ -58,8 +58,8 @@ git clone https://github.com/Xwansk/uniapp-diagnostic-tool.git
 
 | 方式 | 操作 | 说明 |
 |------|------|------|
-| ⭐ **推荐** | 右键 `uniapp-diagnostic.bat` → **以管理员身份运行** | 完整检测所有项目 |
-| 💡 **快速** | 双击 `uniapp-diagnostic.bat` | 部分检测项可能跳过 |
+| ⭐ **推荐** | 右键 `uniapp-diagnostic.cmd` → **以管理员身份运行** | 完整检测所有项目 |
+| 💡 **快速** | 双击 `uniapp-diagnostic.cmd` | 部分检测项可能跳过 |
 
 ## 🛡️ 自愈特性
 
