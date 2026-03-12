@@ -63,6 +63,7 @@ $WarningPreference = "SilentlyContinue"
 
 # === 第四层：环境预检 ===
 $script:canUseColor = $true
+$script:issues = [System.Collections.ArrayList]@()
 try {
     Write-Host "" -ForegroundColor Green -ErrorAction Stop
 } catch {
@@ -256,6 +257,14 @@ function Check-Node {
     }
 
     $verStr = $nodeRaw -replace "v", ""
+    
+    # 防止非标准版本号格式导致崩溃
+    if ($verStr -notmatch '^\d+\.\d+') {
+        Write-FAIL "Node.js 版本" "版本号格式异常：$nodeRaw"
+        Add-Issue "FAIL" "Node.js" "版本号格式异常" "无法解析版本号：$nodeRaw" "重新安装 Node.js"
+        return
+    }
+    
     $major = [int]($verStr.Split(".")[0])
     $minor = [int]($verStr.Split(".")[1])
 
@@ -660,16 +669,22 @@ function Check-Project($pkgPath) {
         $viteVer = $allDeps["vite"]
         if ($viteVer -and $vueMajor -eq 3) {
             Write-OK "Vite" $viteVer
-            $viteMajor = [int](($viteVer -replace "[\^~>=]", "").Split(".")[0])
-            if ($viteMajor -ge 5) {
-                # 检查 @vitejs/plugin-vue 版本
-                $pluginVue = $allDeps["@vitejs/plugin-vue"]
-                if ($pluginVue) {
-                    $pluginMajor = [int](($pluginVue -replace "[\^~>=]", "").Split(".")[0])
-                    if ($pluginMajor -lt 4) {
-                        Write-WARN "Vite/plugin-vue 兼容性" "@vitejs/plugin-vue $pluginVue 可能与 Vite $viteVer 不兼容"
-                        Write-Fix "npm install @vitejs/plugin-vue@latest"
-                        Add-Issue "WARN" "项目" "Vite/plugin-vue版本冲突" "需要plugin-vue 4+" "npm install @vitejs/plugin-vue@latest"
+            $viteVerClean = $viteVer -replace "[\^~>=]", ""
+            if ($viteVerClean -match '^\d+\.\d+') {
+                $viteMajor = [int]($viteVerClean.Split(".")[0])
+                if ($viteMajor -ge 5) {
+                    # 检查 @vitejs/plugin-vue 版本
+                    $pluginVue = $allDeps["@vitejs/plugin-vue"]
+                    if ($pluginVue) {
+                        $pluginVerClean = $pluginVue -replace "[\^~>=]", ""
+                        if ($pluginVerClean -match '^\d+\.\d+') {
+                            $pluginMajor = [int]($pluginVerClean.Split(".")[0])
+                            if ($pluginMajor -lt 4) {
+                                Write-WARN "Vite/plugin-vue 兼容性" "@vitejs/plugin-vue $pluginVue 可能与 Vite $viteVer 不兼容"
+                                Write-Fix "npm install @vitejs/plugin-vue@latest"
+                                Add-Issue "WARN" "项目" "Vite/plugin-vue版本冲突" "需要plugin-vue 4+" "npm install @vitejs/plugin-vue@latest"
+                            }
+                        }
                     }
                 }
             }
@@ -982,11 +997,16 @@ function Check-EdgeCases {
     }
 
     # npm peer deps 模式检测（npm v7+ 默认严格模式）
-    $npmMajor = [int]((Get-CmdOutput "npm" @("-v")).Split(".")[0])
-    if ($npmMajor -ge 7) {
-        Write-INFO "npm 对等依赖模式" "npm $npmMajor.x 默认严格模式（peer deps 冲突会直接报错）"
-        Write-Fix "如遇 peer dep 冲突报错：npm install --legacy-peer-deps"
-        Write-Fix "或永久设置：npm config set legacy-peer-deps true"
+    $npmVerRaw = Get-CmdOutput "npm" @("-v")
+    if ($npmVerRaw -and $npmVerRaw -match '^\d+\.\d+') {
+        $npmMajor = [int]($npmVerRaw.Split(".")[0])
+        if ($npmMajor -ge 7) {
+            Write-INFO "npm 对等依赖模式" "npm $npmMajor.x 默认严格模式（peer deps 冲突会直接报错）"
+            Write-Fix "如遇 peer dep 冲突报错：npm install --legacy-peer-deps"
+            Write-Fix "或永久设置：npm config set legacy-peer-deps true"
+        }
+    } else {
+        $npmMajor = 0
     }
 
     # 检测 package-lock.json 版本与当前 npm 不匹配
