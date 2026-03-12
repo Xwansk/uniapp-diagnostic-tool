@@ -77,7 +77,9 @@ try {
     $script:canUseUnicode = $false
 }
 
-    $v = "v2.0"
+# === 显示标题 ===
+function Show-Header {
+    $v = "v3.0"
     Write-Host ""
     Write-Host "  ╔══════════════════════════════════════════════════╗" -ForegroundColor DarkCyan
     Write-Host "  ║      uni-app 环境深度诊断工具  $v              ║" -ForegroundColor DarkCyan
@@ -1063,7 +1065,7 @@ function Write-Summary {
 # ──────────────────────────────────────────────────────────────
 # 主流程
 # ──────────────────────────────────────────────────────────────
-Write-Banner
+Show-Header
 Check-System
 Check-Node
 Check-Npm
